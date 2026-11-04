@@ -1,7 +1,3 @@
-<div align="center">
-
----
-
 `pysb3.py` is a small, dependency-free Python module and domain-specific
 language (DSL) for creating Scratch 3 project archives. It turns Python
 contexts and function calls into Scratch blocks, project JSON, and a `.sb3`
