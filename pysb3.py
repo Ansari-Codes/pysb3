@@ -1221,9 +1221,19 @@ class Stage(Target):
         self,
         costumes: Mapping[str, Costume] | None = None,
         sounds: Mapping[str, Sound] | None = None,
+        *,
+        width: int = 480,
+        height: int = 360,
     ) -> None:
+        for name, value in (("width", width), ("height", height)):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise TypeError(f"Stage {name} must be an integer")
+            if not 1 <= value <= 4096:
+                raise ValueError(f"Stage {name} must be between 1 and 4096")
         super().__init__("Stage", costumes, sounds)
         self.sprites: list[Sprite] = []
+        self.width = width
+        self.height = height
 
     def _assets(self) -> tuple[list[_Asset], list[_Asset]]:
         if not self.costumes:
@@ -1323,9 +1333,41 @@ class BackDrop:
 
 
 class Game:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        framerate: int = 30,
+        interpolation: bool = False,
+        turbo_mode: bool = False,
+        high_quality_pen: bool = False,
+        infinite_clones: bool = False,
+        remove_fencing: bool = False,
+        remove_misc_limits: bool = False,
+    ) -> None:
+        if isinstance(framerate, bool) or not isinstance(framerate, int):
+            raise TypeError("framerate must be an integer")
+        if not 0 <= framerate <= 240:
+            raise ValueError("framerate must be between 0 and 240")
+        for name, value in (
+            ("interpolation", interpolation),
+            ("turbo_mode", turbo_mode),
+            ("high_quality_pen", high_quality_pen),
+            ("infinite_clones", infinite_clones),
+            ("remove_fencing", remove_fencing),
+            ("remove_misc_limits", remove_misc_limits),
+        ):
+            if not isinstance(value, bool):
+                raise TypeError(f"{name} must be a bool")
+
         self.stage: Stage | None = None
         self.backdrop: BackDrop | None = None
+        self.framerate = framerate
+        self.interpolation = interpolation
+        self.turbo_mode = turbo_mode
+        self.high_quality_pen = high_quality_pen
+        self.infinite_clones = infinite_clones
+        self.remove_fencing = remove_fencing
+        self.remove_misc_limits = remove_misc_limits
 
     def set_stage(self, stage: Stage) -> None:
         if not isinstance(stage, Stage):
@@ -1343,6 +1385,23 @@ class Game:
             raise ValueError("Set a stage before compiling the game")
         output_path = Path(filename)
         targets, assets = _serialize_game(self.stage)
+        if self._has_turbowarp_settings():
+            targets[0]["comments"]["twconfig"] = {
+                "blockId": None,
+                "x": 50,
+                "y": 50,
+                "width": 350,
+                "height": 170,
+                "minimized": False,
+                "text": (
+                    "Configuration for https://turbowarp.org/\n"
+                    "You can move, resize, and minimize this comment, but don't "
+                    "edit it by hand. This comment can be deleted to remove "
+                    "the stored settings.\n"
+                    f"{json.dumps(self._turbowarp_settings(), separators=(',', ':'))}"
+                    " // _twconfig_"
+                ),
+            }
         project = {
             "targets": targets,
             "monitors": [],
@@ -1358,6 +1417,39 @@ class Game:
             for asset_name, data in assets.items():
                 archive.writestr(asset_name, data)
         return output_path
+
+    def _has_turbowarp_settings(self) -> bool:
+        return (
+            self.stage is not None
+            and (
+                self.stage.width != 480
+                or self.stage.height != 360
+                or self.framerate != 30
+                or self.interpolation
+                or self.turbo_mode
+                or self.high_quality_pen
+                or self.infinite_clones
+                or self.remove_fencing
+                or self.remove_misc_limits
+            )
+        )
+
+    def _turbowarp_settings(self) -> dict[str, Any]:
+        if self.stage is None:
+            raise ValueError("Set a stage before creating TurboWarp settings")
+        return {
+            "framerate": self.framerate,
+            "runtimeOptions": {
+                "maxClones": 9999999999 if self.infinite_clones else 300,
+                "miscLimits": not self.remove_misc_limits,
+                "fencing": not self.remove_fencing,
+            },
+            "interpolation": self.interpolation,
+            "turbo": self.turbo_mode,
+            "hq": self.high_quality_pen,
+            "width": self.stage.width,
+            "height": self.stage.height,
+        }
 
 
 def _serialize_game(stage: Stage) -> tuple[list[dict[str, Any]], dict[str, bytes]]:

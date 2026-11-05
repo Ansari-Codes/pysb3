@@ -241,6 +241,50 @@ The module also exports enum-like collections such as `KEYPRESSED`, `GOTO`,
 `ROTATION_STYLE`, `EFFECT`, `SOUND_EFFECT`, `TOUCHING`, and `DATE_PART`. See
 `pysb3.py` for the full list of exported helper names and accepted arguments.
 
+## TurboWarp project settings
+
+Set the stage dimensions in `Stage()` and TurboWarp runtime options in
+`Game()`. When any setting differs from its default, `compile()` stores the
+configuration in a special comment on the stage. TurboWarp recognizes this
+`_twconfig_` comment when you open or package the `.sb3` project.
+
+```python
+from pysb3 import Game, Stage
+
+game = Game(
+    framerate=60,
+    interpolation=True,
+    turbo_mode=True,
+    high_quality_pen=True,
+    infinite_clones=True,
+    remove_fencing=True,
+    remove_misc_limits=True,
+)
+stage = Stage(width=720, height=480)
+
+game.set_stage(stage)
+game.compile("configured.sb3")
+```
+
+`Stage.width` and `Stage.height` must be integers from 1 through 4096.
+`framerate` must be an integer from 0 through 240. The other options must be
+booleans:
+
+| Option                 |   Default | Effect                                            |
+| ---------------------- | --------: | ------------------------------------------------- |
+| `framerate`          |    `30` | Sets the custom project frame rate.               |
+| `interpolation`      | `False` | Interpolates motion between frames.               |
+| `turbo_mode`         | `False` | Enables Turbo Mode.                               |
+| `high_quality_pen`   | `False` | Enables higher-quality pen rendering.             |
+| `infinite_clones`    | `False` | Removes the standard clone cap.                   |
+| `remove_fencing`     | `False` | Allows sprites to move beyond the stage edges.    |
+| `remove_misc_limits` | `False` | Removes TurboWarp's miscellaneous runtime limits. |
+
+Default settings do not add a configuration comment, so projects with no
+custom settings keep their existing project structure. Setting Warp Timer is
+not supported through the `.sb3` project comment: Warp Timer is a Packager
+compile option, so enable it in Packager when creating a packaged build.
+
 ## Included examples
 
 ### Space Defender
